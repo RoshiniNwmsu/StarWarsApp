@@ -1,0 +1,44 @@
+@page "/vehicles"
+@inject HttpClient Http
+@using StarWarsApp.Models
+
+<h2>Vehicles by Manufacturer</h2>
+
+@if (groupedVehicles.Count == 0)
+{
+    <p>Loading vehicles...</p>
+}
+else
+{
+    @foreach (var group in groupedVehicles)
+    {
+        <div class="manufacturer-box">
+            <h3>@group.Key</h3>
+            <ul>
+                @foreach (var v in group.Value)
+                {
+                    <li>
+                        <strong>@v.Name</strong>
+                        – @((string.IsNullOrEmpty(v.CostInCredits) || v.CostInCredits == "unknown")
+                            ? "N/A"
+                            : $"{v.CostInCredits} credits")
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+}
+
+@code {
+    private List<Vehicle> vehicles = new();
+    private Dictionary<string, List<Vehicle>> groupedVehicles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        vehicles = await Http.GetFromJsonAsync<List<Vehicle>>("api/vehicles");
+
+        groupedVehicles = vehicles
+            .GroupBy(v => v.Manufacturer)
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
+}

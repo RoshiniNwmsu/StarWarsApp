@@ -1,0 +1,81 @@
+@page "/characters"
+@inject HttpClient Http
+@using StarWarsApp.Models
+
+<h2>Star Wars Characters (Filtered by Name)</h2>
+
+<!-- Search box to filter characters by name -->
+<input @oninput="OnSearchInput" class="search-box" placeholder="Search by name..." />
+
+@if (filteredCharacters == null || allFilms == null)
+{
+    <p>Loading characters and films...</p>
+}
+else if (!filteredCharacters.Any())
+{
+    <p>No characters found.</p>
+}
+else
+{
+    <!-- Display character cards with name, gender, and films they appear in -->
+    <div class="character-grid">
+        @foreach (var character in filteredCharacters)
+        {
+            <div class="character-card">
+                <h4>@character.Name</h4>
+                <p><strong>Gender:</strong> @character.Gender</p>
+                <p><strong>Films:</strong></p>
+                <ul>
+                    @foreach (var film in allFilms.Where(f => f.Characters.Contains(character.Url)))
+                    {
+                        <li>@film.Title</li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    // Variables
+    private List<Character> allCharacters = new();
+    private List<Character> filteredCharacters = new();
+    private List<Film> allFilms = new();
+    private string searchTerm = "";
+
+    // Load characters and films from API when the page loads
+    protected override async Task OnInitializedAsync()
+    {
+        var charactersTask = Http.GetFromJsonAsync<List<Character>>("api/people");
+        var filmsTask = Http.GetFromJsonAsync<List<Film>>("api/films");
+
+        await Task.WhenAll(charactersTask, filmsTask);
+
+        allCharacters = charactersTask.Result;
+        allFilms = filmsTask.Result;
+
+        FilterCharacters();
+    }
+
+    // Handle input in the search box
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? "";
+        FilterCharacters();
+    }
+
+    // Filter characters by name validity and search term
+    private void FilterCharacters()
+    {
+        filteredCharacters = allCharacters
+            .Where(c => IsValidName(c.Name) &&
+                        c.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    // Allow names with only letters and spaces (no numbers or symbols)
+    private bool IsValidName(string name)
+    {
+        return name.All(c => char.IsLetter(c) || c == ' ');
+    }
+}

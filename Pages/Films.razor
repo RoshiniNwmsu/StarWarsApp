@@ -1,0 +1,86 @@
+@page "/films"
+@inject HttpClient Http
+@using StarWarsApp.Models
+
+<h2>Star Wars Films</h2>
+
+@if (films == null || allCharacters == null || allVehicles == null)
+{
+    // Show a loading message while data is being fetched
+    <p>Loading films...</p>
+}
+else
+{
+    <ul>
+        @foreach (var film in films)
+        {
+            <li>
+                <!-- Toggle button to show/hide film details -->
+                <button @onclick="() => ToggleDetails(film.EpisodeId)">
+                    @film.Title
+                </button>
+
+                @if (selectedFilmId == film.EpisodeId)
+                {
+                    <div class="details-box">
+                        <p><strong>Director:</strong> @film.Director</p>
+                        <p><strong>Producer:</strong> @film.Producer</p>
+
+                        <p><strong>Characters:</strong></p>
+                        <ul>
+                            @foreach (var url in film.Characters)
+                            {
+                                // Find character details by URL and display name
+                                var character = allCharacters.FirstOrDefault(c => c.Url == url);
+                                if (character != null)
+                                {
+                                    <li>@character.Name</li>
+                                }
+                            }
+                        </ul>
+
+                        <p><strong>Vehicles:</strong></p>
+                        <ul>
+                            @foreach (var url in film.Vehicles)
+                            {
+                                // Find vehicle details by URL and display name
+                                var vehicle = allVehicles.FirstOrDefault(v => v.Url == url);
+                                if (vehicle != null)
+                                {
+                                    <li>@vehicle.Name</li>
+                                }
+                            }
+                        </ul>
+                    </div>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<Film> films;                    // List of all films
+    private List<Character> allCharacters;      // All characters used for lookup
+    private List<Vehicle> allVehicles;          // All vehicles used for lookup
+    private int? selectedFilmId = null;         // Stores currently expanded film
+
+    // Load films, characters, and vehicles from API on component load
+    protected override async Task OnInitializedAsync()
+    {
+        var filmTask = Http.GetFromJsonAsync<List<Film>>("api/films");
+        var characterTask = Http.GetFromJsonAsync<List<Character>>("api/people");
+        var vehicleTask = Http.GetFromJsonAsync<List<Vehicle>>("api/vehicles");
+
+        await Task.WhenAll(filmTask, characterTask, vehicleTask);
+
+        films = filmTask.Result;
+        allCharacters = characterTask.Result;
+        allVehicles = vehicleTask.Result;
+    }
+
+    // Toggle expanded film details; collapse if same film clicked again
+    private void ToggleDetails(int filmId)
+    {
+        selectedFilmId = selectedFilmId == filmId ? null : filmId;
+    }
+}
